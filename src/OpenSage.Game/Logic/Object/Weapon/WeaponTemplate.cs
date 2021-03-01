@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -735,5 +735,76 @@ namespace OpenSage.Logic.Object
         AntiParachute        = 1 << 7,
         AntiStructure        = 1 << 8,
         AntiAirborneMonster  = 1 << 9,
+    }
+
+    public static class WeaponAntiFlagsExtensions
+    {
+        public static bool CanAttackObject(this WeaponAntiFlags weapon, GameObject obj)
+        {
+            var kinds = obj.Definition.KindOf;
+            if (obj.IsAirborne())
+            {
+                if (weapon.HasFlag(WeaponAntiFlags.AntiAirborneVehicle) && kinds.Get(ObjectKinds.Aircraft) &&
+                    kinds.Get(ObjectKinds.Vehicle))
+                {
+                    return true;
+                }
+                if (weapon.HasFlag(WeaponAntiFlags.AntiGround) && !kinds.Get(ObjectKinds.Aircraft))
+                {
+                    return true;
+                }
+
+                if (weapon.HasFlag(WeaponAntiFlags.AntiProjectile) && kinds.Get(ObjectKinds.Projectile))
+                {
+                    return true;
+                }
+
+                if (weapon.HasFlag(WeaponAntiFlags.AntiSmallMissile) &&
+                    kinds.Get(ObjectKinds.SmallMissile))
+                {
+                    return true;
+                }
+
+                // TODO: this probably isn't correct - investigate distinguishing paratroopers from regular infantry?
+                if (weapon.HasFlag(WeaponAntiFlags.AntiAirborneInfantry) &&
+                    kinds.Get(ObjectKinds.Infantry))
+                {
+                    return true;
+                }
+
+                if (weapon.HasFlag(WeaponAntiFlags.AntiBallisticMissile) &&
+                    kinds.Get(ObjectKinds.BallisticMissile))
+                {
+                    return true;
+                }
+
+                if (weapon.HasFlag(WeaponAntiFlags.AntiParachute) && kinds.Get(ObjectKinds.Parachute))
+                {
+                    return true;
+                }
+
+                return false;
+            }
+
+            // this should handle when an aircraft is on the ground, since we previously checked if it was airborne
+            if (weapon.HasFlag(WeaponAntiFlags.AntiGround) && (kinds.Get(ObjectKinds.Vehicle) ||
+                                                               kinds.Get(ObjectKinds.Infantry) ||
+                                                               kinds.Get(ObjectKinds.Structure)))
+            {
+                return true;
+            }
+
+            if (weapon.HasFlag(WeaponAntiFlags.AntiMine) && kinds.Get(ObjectKinds.Mine))
+            {
+                return true;
+            }
+
+            if (weapon.HasFlag(WeaponAntiFlags.AntiStructure) && kinds.Get(ObjectKinds.Structure))
+            {
+                return true;
+            }
+
+            return false;
+        }
     }
 }

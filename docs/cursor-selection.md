@@ -1,3 +1,5 @@
+
+
 ## Overview
 
 Cursor selection in Zero Hour is as follows, with the following terminology:
@@ -12,7 +14,7 @@ This is written under the assumption that no special ability is selected, which 
 
 #### If `object` is not owned by the player...
 
-**Always** show the select cursor
+**Always** show the **Select** cursor
 
 ## No modifier keys
 
@@ -21,7 +23,9 @@ This is written under the assumption that no special ability is selected, which 
 - If `object` is a `structure`
   - If `target` is _any game object_
     - If `structure` has a weapon (Strategy Center + Bombardment), and `target` is enemy-owned
-      - Show the **AttackObj** cursor
+      - If `structure` can attack target
+        - Show the **AttackObj** cursor
+      - Show the **GenericInvalid** cursor
     - Show the **Select** cursor
   - If `structure` has a rally point ability
     - Show the **RallyPoint** cursor
@@ -38,8 +42,6 @@ This is written under the assumption that no special ability is selected, which 
 
 #### `target` is a game object
 
-- If `target` is neutral _and_ `unit` has capture special power
-  - Show the **CaptureBuilding** cursor
 - If `target` is an enemy _and_ `unit` is not a dozer
   - If `unit` is `Black Lotus` and `target` is vehicle or supply stash
     - Show the **Hack** cursor
@@ -49,6 +51,8 @@ This is written under the assumption that no special ability is selected, which 
 
 #### `target` is not enemy
 
+- If `target` is neutral _and_ `target` is capturable _and_ `unit` has capture special power
+  - Show the **CaptureBuilding** cursor
 - If `target` supports garrisons _and_ `target` is garrisonable by `unit`
   - If `target` is not full (e.g. barracks/airfield)
     - Show the **EnterFriendly** cursor
@@ -57,11 +61,10 @@ This is written under the assumption that no special ability is selected, which 
     - If `target` is not full (e.g. barracks) _or_ heal doesn't require garrison (e.g. airfield?)
       - Show the **EnterFriendly** cursor
   - If `unit` is `dozer` 
-    - If `target` is incomplete player structure
+    - If `target` is incomplete player structure _and_ `target` is not currently being built by another dozer
       - Show the **ResumeConstruction** cursor
     - If `target` needs healing
       - Show the **GetRepaired** cursor
-
 - Show the **Select** cursor
 
 ## Modifier keys
@@ -74,8 +77,6 @@ This section assumes `object` is player-owned. If not, the standard cursor selec
 
 ### Ctrl
 
-- If _not all units_ in `object` can attack
-  - Show the **GenericInvalid** cursor (tested with a GLA worker and rebel)
 - If `target` is airborne
   - If `object` (or garrisons) can attack airborne targets
     - Show the **AttackObj** cursor
