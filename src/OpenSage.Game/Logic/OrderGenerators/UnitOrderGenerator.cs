@@ -38,7 +38,12 @@ namespace OpenSage.Logic.OrderGenerators
             {
                 // TODO: check range of target, or range to ground position if target is null
                 const bool targetIsInRange = true;
-                return targetIsInRange ? "AttackObj" : "GenericInvalid";
+                return targetIsInRange ? target is null ? "ForceAttackGround" : "ForceAttackObj" : "GenericInvalid";
+            }
+
+            if (target is null)
+            {
+                return "ForceAttackGround";
             }
 
             return selectedUnits.Any(u => u.CanAttackObject(target)) ? "AttackObj" : "GenericInvalid";
@@ -113,7 +118,8 @@ namespace OpenSage.Logic.OrderGenerators
             if (_worldObject is null)
             {
                 // TODO: should this be floor or ceiling?
-                var terrainImpassable = _game.Scene3D.Terrain.Map.BlendTileData.Impassability[(int) _worldPosition.X, (int) _worldPosition.Y];
+                // TODO: index out of range exception on x coordinate
+                var terrainImpassable = false; // _game.Scene3D.Terrain.Map.BlendTileData.Impassability[(int) _worldPosition.X, (int) _worldPosition.Y];
                 if (!terrainImpassable)
                 {
                     return "Move";
@@ -167,6 +173,7 @@ namespace OpenSage.Logic.OrderGenerators
                 if (!garrisonIsFull && !_worldObject.Destroyed &&
                     SelectedUnits.Select(u => u.Definition.KindOf).Any(k => g.AllowInsideKindOf?.Intersects(k) ?? true))
                 {
+                    // TODO: this is being returned for the barracks, even when a unit doesn't need to be healed
                     return "EnterFriendly";
                 }
 
