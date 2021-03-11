@@ -7,8 +7,6 @@ namespace OpenSage.Graphics.Animation
 {
     public sealed class AnimationInstance
     {
-        private GameObject _gameObject;
-
         private readonly int[] _keyframeIndices;
         private readonly ModelBoneInstance[] _boneInstances;
         private readonly W3DAnimation _animation;
@@ -25,14 +23,13 @@ namespace OpenSage.Graphics.Animation
         private bool Reverse => _mode == AnimationMode.OnceBackwards || _mode == AnimationMode.LoopBackwards;
         private bool Manual => _mode == AnimationMode.Manual;
 
-        public AnimationInstance(ModelInstance modelInstance, W3DAnimation animation,
-            AnimationMode mode, AnimationFlags flags, GameObject gameObject)
+        public AnimationInstance(ModelBoneInstance[] modelBoneInstances, W3DAnimation animation,
+            AnimationMode mode, AnimationFlags flags)
         {
-            _gameObject = gameObject;
             _animation = animation;
             _mode = mode;
             _flags = flags;
-            _boneInstances = modelInstance.ModelBoneInstances;
+            _boneInstances = modelBoneInstances;
             _keyframeIndices = new int[animation.Clips.Length];
         }
 
@@ -125,7 +122,7 @@ namespace OpenSage.Graphics.Animation
 
             if (Manual)
             {
-                time = _animation.Duration * _gameObject.BuildProgress * _speedFactor;
+                time = _animation.Duration * _speedFactor;
             }
             else
             {
