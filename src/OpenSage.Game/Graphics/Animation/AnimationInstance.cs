@@ -120,11 +120,7 @@ namespace OpenSage.Graphics.Animation
             var time = _currentTimeValue;
             var deltaTime = gameTime.DeltaTime * _speedFactor;
 
-            if (Manual)
-            {
-                time = _animation.Duration * _speedFactor;
-            }
-            else
+            if (!Manual)
             {
                 if (Reverse)
                 {
