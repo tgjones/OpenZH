@@ -87,7 +87,7 @@ namespace OpenSage.Graphics.Animation
         {
             Array.Clear(_keyframeIndices, 0, _keyframeIndices.Length);
 
-            if (Reverse)
+            if (_flags.HasFlag(AnimationFlags.StartFrameLast) || Reverse && !_flags.HasFlag(AnimationFlags.StartFrameFirst))
             {
                 for (var i = 0; i < _keyframeIndices.Length; i++)
                 {
