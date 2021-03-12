@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Numerics;
 using OpenSage.Logic.Object;
 using OpenSage.Mathematics;
@@ -67,9 +68,9 @@ namespace OpenSage.Graphics.Animation
                 _flags.HasFlag(AnimationFlags.StartFrameFirst) ||
                 _flags.HasFlag(AnimationFlags.StartFrameLast))
             {
-                if (Reverse)
+                if (Reverse || _flags.HasFlag(AnimationFlags.StartFrameLast))
                 {
-                    _currentTimeValue = _animation.Duration;
+                    _currentTimeValue = _animation.Clips.Max(c => c.Keyframes.LastOrDefault().Time);
                 }
                 else
                 {
