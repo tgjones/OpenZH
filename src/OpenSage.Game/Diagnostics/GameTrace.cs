@@ -13,6 +13,11 @@ namespace OpenSage.Diagnostics
         private static StreamWriter _output;
         private static bool _writtenFirstEntry;
 
+        static GameTrace()
+        {
+            SuperluminalPerf.Initialize();
+        }
+
         public static void Start(string outputPath)
         {
             _durationEvents = new ObjectPool<DurationEventDisposable>(() => new DurationEventDisposable());
@@ -35,6 +40,7 @@ namespace OpenSage.Diagnostics
             }
 
             WriteEvent("B", name);
+            SuperluminalPerf.BeginEvent(name);
 
             return _durationEvents.Rent();
         }
@@ -69,6 +75,7 @@ namespace OpenSage.Diagnostics
             public void Dispose()
             {
                 WriteEvent("E", string.Empty);
+                SuperluminalPerf.EndEvent();
             }
         }
 
