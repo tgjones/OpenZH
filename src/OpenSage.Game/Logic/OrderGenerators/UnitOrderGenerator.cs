@@ -9,7 +9,7 @@ using OpenSage.Input;
 using OpenSage.Logic.Object;
 using OpenSage.Logic.Orders;
 using OpenSage.Mathematics;
-using OpenSage.Mathematics.FixedMath;
+using FixedMath.NET;
 
 namespace OpenSage.Logic.OrderGenerators
 {
