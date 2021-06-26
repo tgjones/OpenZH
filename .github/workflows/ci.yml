@@ -40,7 +40,7 @@ jobs:
       uses: codecov/codecov-action@v1
 
     - name: Publish
-      run: dotnet publish src/OpenSage.Launcher --configuration Release --runtime ${{ matrix.runtime }} --output build/artifacts/${{ matrix.runtime }}
+      run: dotnet publish src/OpenSage.Launcher --configuration Release --runtime ${{ matrix.runtime }} --output build/artifacts/${{ matrix.runtime }} /p:PublishSingleFile=true /p:PublishTrimmed=true
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v1
