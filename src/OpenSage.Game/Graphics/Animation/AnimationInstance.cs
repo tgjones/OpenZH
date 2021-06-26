@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Numerics;
 using OpenSage.Logic.Object;
 using OpenSage.Mathematics;
@@ -7,8 +8,6 @@ namespace OpenSage.Graphics.Animation
 {
     public sealed class AnimationInstance
     {
-        private GameObject _gameObject;
-
         private readonly int[] _keyframeIndices;
         private readonly ModelBoneInstance[] _boneInstances;
         private readonly W3DAnimation _animation;
@@ -25,14 +24,13 @@ namespace OpenSage.Graphics.Animation
         private bool Reverse => _mode == AnimationMode.OnceBackwards || _mode == AnimationMode.LoopBackwards;
         private bool Manual => _mode == AnimationMode.Manual;
 
-        public AnimationInstance(ModelInstance modelInstance, W3DAnimation animation,
-            AnimationMode mode, AnimationFlags flags, GameObject gameObject)
+        public AnimationInstance(ModelBoneInstance[] modelBoneInstances, W3DAnimation animation,
+            AnimationMode mode, AnimationFlags flags)
         {
-            _gameObject = gameObject;
             _animation = animation;
             _mode = mode;
             _flags = flags;
-            _boneInstances = modelInstance.ModelBoneInstances;
+            _boneInstances = modelBoneInstances;
             _keyframeIndices = new int[animation.Clips.Length];
         }
 
@@ -70,9 +68,9 @@ namespace OpenSage.Graphics.Animation
                 _flags.HasFlag(AnimationFlags.StartFrameFirst) ||
                 _flags.HasFlag(AnimationFlags.StartFrameLast))
             {
-                if (Reverse)
+                if (Reverse || _flags.HasFlag(AnimationFlags.StartFrameLast))
                 {
-                    _currentTimeValue = _animation.Duration;
+                    _currentTimeValue = _animation.Clips.Max(c => c.Keyframes.LastOrDefault().Time);
                 }
                 else
                 {
@@ -90,7 +88,7 @@ namespace OpenSage.Graphics.Animation
         {
             Array.Clear(_keyframeIndices, 0, _keyframeIndices.Length);
 
-            if (Reverse)
+            if (_flags.HasFlag(AnimationFlags.StartFrameLast) || Reverse && !_flags.HasFlag(AnimationFlags.StartFrameFirst))
             {
                 for (var i = 0; i < _keyframeIndices.Length; i++)
                 {
@@ -123,11 +121,7 @@ namespace OpenSage.Graphics.Animation
             var time = _currentTimeValue;
             var deltaTime = gameTime.DeltaTime * _speedFactor;
 
-            if (Manual)
-            {
-                time = _animation.Duration * _gameObject.BuildProgress * _speedFactor;
-            }
-            else
+            if (!Manual)
             {
                 if (Reverse)
                 {

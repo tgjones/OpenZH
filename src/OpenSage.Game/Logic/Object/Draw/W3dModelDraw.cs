@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -179,7 +179,7 @@ namespace OpenSage.Logic.Object
                     {
                         var flags = animationState.Flags;
                         var mode = animationBlock.AnimationMode;
-                        var animationInstance = new AnimationInstance(modelInstance, anim, mode, flags, GameObject);
+                        var animationInstance = new AnimationInstance(modelInstance.ModelBoneInstances, anim, mode, flags);
                         modelInstance.AnimationInstances.Add(animationInstance);
                         animationInstance.Play();
                         break;
@@ -271,7 +271,7 @@ namespace OpenSage.Logic.Object
                 {
                     var mode = conditionState.AnimationMode;
                     var flags = conditionState.Flags;
-                    var animationInstance = new AnimationInstance(modelInstance, animation, mode, flags, GameObject);
+                    var animationInstance = new AnimationInstance(modelInstance.ModelBoneInstances, animation, mode, flags);
                     modelInstance.AnimationInstances.Add(animationInstance);
                 }
             }
