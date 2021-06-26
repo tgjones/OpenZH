@@ -29,26 +29,35 @@ namespace OpenSage.Utilities
                 }
             }
 
+            string detectedLanguage = DefaultLanguage;
             switch (gameDefinition.Game)
             {
                 case SageGame.CncGenerals:
-                    return DetectFromFileSystem(rootDirectory, "Audio", ".big");
+                    DetectFromFileSystem(rootDirectory, "Audio", ".big", out detectedLanguage);
+                    break;
                 case SageGame.CncGeneralsZeroHour:
-                    return DetectFromFileSystem(rootDirectory, "Audio", "ZH.big");
+                    DetectFromFileSystem(rootDirectory, "Audio", "ZH.big", out detectedLanguage);
+                    break;
                 case SageGame.Bfme:
                 case SageGame.Bfme2:
                 case SageGame.Bfme2Rotwk:
-                    return DetectFromFileSystem(Path.Combine(rootDirectory, "lang"), "", "Audio.big");
+                    if (DetectFromFileSystem(Path.Combine(rootDirectory, "lang"), "", "Audio.big", out detectedLanguage))
+                    {
+                        break;
+                    }
+                    DetectFromFileSystem(rootDirectory, "", "Audio.big", out detectedLanguage);
+                    break;
             }
 
-            return DefaultLanguage;
+            return detectedLanguage;
         }
 
         /// <summary>
         /// Used to read the installed language version from registry
         /// </summary>
         /// <param name="registryKeys"></param>
-        /// <returns>language as string</returns>
+        /// <param name="language"></param>
+        /// <returns>true if an appropriate registry key is found, false otherwise</returns>
         private static bool ReadFromRegistry(IEnumerable<RegistryKeyPath> registryKeys, out string language)
         {
             language = DefaultLanguage;
@@ -71,12 +80,14 @@ namespace OpenSage.Utilities
         /// <param name="rootDirectory"></param>
         /// <param name="filePrefix"></param>
         /// <param name="fileSuffix"></param>
-        /// <returns>language as string</returns>
-        private static string DetectFromFileSystem(string rootDirectory, string filePrefix, string fileSuffix)
+        /// <param name="detectedLanguage"></param>
+        /// <returns>returns true if an appropriate file is found, false otherwise</returns>
+        private static bool DetectFromFileSystem(string rootDirectory, string filePrefix, string fileSuffix, out string detectedLanguage)
         {
-            if (string.IsNullOrEmpty(filePrefix) && string.IsNullOrEmpty(fileSuffix))
+            detectedLanguage = DefaultLanguage;
+            if (string.IsNullOrEmpty(filePrefix) && string.IsNullOrEmpty(fileSuffix) || !Directory.Exists(rootDirectory))
             {
-                return DefaultLanguage;
+                return false;
             }
 
             var files = Directory.GetFiles(rootDirectory, $"{filePrefix}*{fileSuffix}", SearchOption.TopDirectoryOnly) // there's no sense in searching subfolders
@@ -89,9 +100,10 @@ namespace OpenSage.Utilities
                 {
                     continue;
                 }
-                return file;
+                detectedLanguage = file;
+                return true;
             }
-            return DefaultLanguage;
+            return false;
         }
     }
 }
