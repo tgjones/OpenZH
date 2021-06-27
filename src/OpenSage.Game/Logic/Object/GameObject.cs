@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -976,6 +976,22 @@ namespace OpenSage.Logic.Object
             {
                 throw new InvalidOperationException("This should not happen");
             }
+        }
+
+        public bool CanAttackObject(GameObject obj)
+        {
+            if (!CanAttack) return false;
+
+            var combinedWeaponCapabilities = Definition.WeaponSets.Values
+                .SelectMany(x => x.Slots.Values.Select(s => s.Weapon.Value?.AntiMask))
+                .Where(f => f.HasValue).Select(f => f.Value).Aggregate((s, t) => s | t);
+
+            return combinedWeaponCapabilities.CanAttackObject(obj);
+        }
+
+        public bool IsAirborne(float groundDelta = 0.1f)
+        {
+            return Translation.Z - GameContext.Terrain.HeightMap.GetHeight(Translation.X, Translation.Y) > groundDelta;
         }
 
         internal void Kill(DeathType deathType, TimeInterval time)
