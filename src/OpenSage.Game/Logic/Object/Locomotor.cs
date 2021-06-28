@@ -129,6 +129,7 @@ namespace OpenSage.Logic.Object
             var distanceRemaining = delta.Vector2XY().Length();
             var braking = GetScaledLocomotorValue(_ => _.Braking);
 
+            bool canExecuteSlide = false;
             switch (LocomotorTemplate.Appearance)
             {
                 case LocomotorAppearance.Treads:
@@ -145,12 +146,18 @@ namespace OpenSage.Logic.Object
                     var circumference = 360.0f / GetTurnRate() * oldSpeed;
                     var radius = circumference / MathUtility.TwoPi;
 
-                    if (distanceRemaining < (radius + 0.25f) && nextPoint != null)
+                    if (distanceRemaining < (radius + 0.25f))
                     {
-                        // turn towards next point
-                        return true;
+                        if (nextPoint != null)
+                        {
+                            // turn towards next point
+                            return true;
+                        }
+                        else
+                        {
+                            canExecuteSlide = true;
+                        }
                     }
-
                     break;
             }
 
@@ -195,6 +202,24 @@ namespace OpenSage.Logic.Object
             var yaw = reachedTurnSpeed ? currentYaw + newDelta : currentYaw;
 
             _gameObject.SteeringWheelsYaw = Math.Clamp(-angleDelta, MathUtility.ToRadians(-GetFrontWheelTurnAngle()), MathUtility.ToRadians(GetFrontWheelTurnAngle()));
+
+            // model roll and pitch
+            var modelPitch = 0.0f;
+            var modelRoll = 0.0f;
+
+            if (canExecuteSlide && LocomotorTemplate.Appearance == LocomotorAppearance.Hover)
+            {
+                translation += new Vector3(Vector2.Normalize(delta.Vector2XY()) * distance, 0);
+                _gameObject.SetTranslation(translation);
+
+                modelPitch = -distance * LocomotorTemplate.ForwardVelocityPitchFactor;
+                modelRoll = angleDelta * distance * LocomotorTemplate.LateralVelocityRollFactor;
+
+                _gameObject.ModelTransform.Rotation = Quaternion.CreateFromYawPitchRoll(modelPitch, modelRoll, 0);
+                _gameObject.SetRotation(Quaternion.CreateFromYawPitchRoll(0.0f, 0.0f, yaw));
+
+                return false;
+            }
 
             var thrust = 0.0f;
             var deltaZ = 0.0f;
@@ -248,9 +273,6 @@ namespace OpenSage.Logic.Object
                     break;
             }
 
-            // model roll and pitch
-            var modelPitch = 0.0f;
-            var modelRoll = 0.0f;
             switch (LocomotorTemplate.Appearance)
             {
                 case LocomotorAppearance.Thrust:
