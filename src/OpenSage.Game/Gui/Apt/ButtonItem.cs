@@ -134,7 +134,7 @@ namespace OpenSage.Gui.Apt
         {
             foreach (var action in _actionList)
             {
-                Context.Avm.Execute(action, Parent.ScriptObject, Character.Container.Constants.Entries);
+                Context.Avm.Execute(action, Parent.ScriptObject, Parent.Context);
             }
             _actionList.Clear();
         }

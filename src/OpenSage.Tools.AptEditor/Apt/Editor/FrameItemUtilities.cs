@@ -40,6 +40,7 @@ namespace OpenSage.Tools.AptEditor.Apt.Editor
                 switch (frameItem)
                 {
                     case PlaceObject placeObject:
+                        // TODO placeObject Override?
                         _placeObjects.Add(placeObject.Depth, new LogicalPlaceObject(EditAndUpdate, placeObject));
                         break;
                     case RemoveObject removeObject:

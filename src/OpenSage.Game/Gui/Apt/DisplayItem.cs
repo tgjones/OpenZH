@@ -4,6 +4,7 @@ using System.Numerics;
 using OpenSage.Data.Apt.Characters;
 using OpenSage.Graphics;
 using OpenSage.Gui.Apt.ActionScript;
+using OpenSage.Gui.Apt.ActionScript.Library;
 using OpenSage.Mathematics;
 
 namespace OpenSage.Gui.Apt
@@ -55,7 +56,7 @@ namespace OpenSage.Gui.Apt
         public SpriteItem Parent { get; protected set; }
         public Character Character { get; protected set; }
         public ItemTransform Transform { get; set; }
-        public ObjectContext ScriptObject { get; protected set; }
+        public StageObject ScriptObject { get; protected set; }
         public string Name { get; set; }
         public bool Visible { get; set; }
         public int? ClipDepth { get; set; }

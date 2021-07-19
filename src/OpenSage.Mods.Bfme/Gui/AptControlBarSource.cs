@@ -5,6 +5,7 @@ using System.Numerics;
 using OpenSage.Gui;
 using OpenSage.Gui.Apt;
 using OpenSage.Gui.Apt.ActionScript;
+using OpenSage.Gui.Apt.ActionScript.Library;
 using OpenSage.Gui.Apt.ActionScript.Opcodes;
 using OpenSage.Gui.ControlBar;
 using OpenSage.Logic;
@@ -59,7 +60,7 @@ namespace OpenSage.Mods.Bfme
         {
             if (!_minimapInitialized)
             {
-                var radar = _root.ScriptObject.GetMember("Radar").ToObject();
+                var radar = _root.ScriptObject.GetMember("Radar").ToObject<StageObject>();
                 var radarClipValue = radar.GetMember("RadarClip");
 
                 if (radarClipValue.Type == ValueType.Undefined)
@@ -68,7 +69,7 @@ namespace OpenSage.Mods.Bfme
                 }
 
                 // This shape is used to render the minimap
-                var radarClip = radarClipValue.ToObject().Item as SpriteItem;
+                var radarClip = radarClipValue.ToObject<StageObject>().Item as SpriteItem;
                 var shape = radarClip.Content.Items[1] as RenderItem;
                 shape.RenderCallback = (AptRenderingContext renderContext, Geometry geom, Texture orig) =>
                 {
@@ -110,18 +111,22 @@ namespace OpenSage.Mods.Bfme
         private void ClearCommandbuttons()
         {
             var aptCommandButtons = _root.ScriptObject.GetMember("CommandButtons").ToObject();
+            // TODO what does this mean?
+            /*
             if (aptCommandButtons.Constants.Count == 0)
             {
                 return;
             }
+            */
+            throw new NotImplementedException();
 
             for (var i = 1; i <= 6; i++)
             {
                 // we do not know how bfme handles this yet
                 if (_game.SageGame == SageGame.Bfme) continue;
 
-                var commandButton = aptCommandButtons.GetMember((i - 1).ToString()).ToObject();
-                var placeHolder = commandButton.GetMember("placeholder").ToObject();
+                var commandButton = aptCommandButtons.GetMember((i - 1).ToString()).ToObject<StageObject>();
+                var placeHolder = commandButton.GetMember("placeholder").ToObject<StageObject>();
                 placeHolder.Item.Visible = false;
 
                 var shape = (placeHolder.Item as SpriteItem).Content.Items[1] as RenderItem;
@@ -155,8 +160,8 @@ namespace OpenSage.Mods.Bfme
                 // we do not know how bfme handles this yet
                 if (_game.SageGame == SageGame.Bfme) continue;
 
-                var commandButton = aptCommandButtons.GetMember((i - 1).ToString()).ToObject();
-                var placeHolder = commandButton.GetMember("placeholder").ToObject();
+                var commandButton = aptCommandButtons.GetMember((i - 1).ToString()).ToObject<StageObject>();
+                var placeHolder = commandButton.GetMember("placeholder").ToObject<StageObject>();
                 placeHolder.Item.Visible = false;
 
                 if (!commandSet.Buttons.ContainsKey(i))
@@ -209,7 +214,7 @@ namespace OpenSage.Mods.Bfme
         }
 
 
-        private void ApplyPortrait(GameObject unit, ObjectContext frame)
+        private void ApplyPortrait(GameObject unit, StageObject frame)
         {
             if (frame == null || ((SpriteItem) frame.Item).Content.Items.Count == 0)
             {
@@ -248,7 +253,7 @@ namespace OpenSage.Mods.Bfme
 
         private void UpdatePalantir(Player player)
         {
-            var palantirFrame = _root.ScriptObject.GetMember("CommandBackground").ToObject();
+            var palantirFrame = _root.ScriptObject.GetMember("CommandBackground").ToObject<StageObject>();
 
             if (player.SelectedUnits.Count > 0)
             {
@@ -268,7 +273,7 @@ namespace OpenSage.Mods.Bfme
 
         private void UpdateSideCommandbar(Player player)
         {
-            var sideCommandBar = _root.ScriptObject.GetMember("SideCommandBar").ToObject();
+            var sideCommandBar = _root.ScriptObject.GetMember("SideCommandBar").ToObject<StageObject>();
 
             if (player.SelectedUnits.Count > 0)
             {

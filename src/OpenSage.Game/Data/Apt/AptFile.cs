@@ -1,9 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System;
 using OpenSage.Data.Apt.Characters;
 using OpenSage.Data.Utilities.Extensions;
 using OpenSage.FileFormats;
+using OpenSage.Data.Apt.FrameItems;
 
 namespace OpenSage.Data.Apt
 {
@@ -74,18 +76,40 @@ namespace OpenSage.Data.Apt
                     {
                         throw new FileNotFoundException("Cannot find imported file", importPath);
                     }
-                    importApt = AptFile.FromFileSystemEntry(importEntry);
+                    importApt = AptFile.FromFileSystemEntry(importEntry); // If this step is not problematic, initactions should be processed automatically
                     importDict[import.Movie] = importApt;
                 }
 
                 //get the export from that apt and proceed
                 var export = importApt.Movie.Exports.Find(x => x.Name == import.Name);
 
+                // TODO: Unable to import sprites with initactions
                 //place the exported character inside our movie
                 Movie.Characters[(int) import.Character] = importApt.Movie.Characters[(int) export.Character];
             }
+
+            // resolve initactions
+            foreach (var frame in Movie.Frames)
+            {
+                foreach (var item in frame.FrameItems)
+                {
+                    if (item is InitAction ia)
+                    {
+                        var spr = Movie.Characters[(int)ia.Sprite];
+                        if (spr is Sprite sprite)
+                        {
+                            sprite.InitActions = ia.Instructions;
+                        }
+                        else
+                        {
+                            throw new NotImplementedException("ARIENAI!!!!!!!");
+                        }
+                    }
+                }
+            }
         }
 
+        // TODO: Caching support
         public static AptFile FromFileSystemEntry(FileSystemEntry entry)
         {
             using (var stream = entry.Open())

@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using ImGuiNET;
 using OpenSage.Data.Apt;
+using OpenSage.Data.Apt.Characters;
 using OpenSage.Tools.AptEditor.Apt.Editor;
 
 namespace OpenSage.Tools.AptEditor.UI.Widgets
@@ -88,7 +89,7 @@ namespace OpenSage.Tools.AptEditor.UI.Widgets
             var indexColor = new Vector4(0, 1, 1, 1);
             var typeColor = new Vector4(0, 0.8f, 0.2f, 1);
             var exportColor = new Vector4(1, 1, 0, 1);
-            foreach (var desc in _utilities!.GetActiveCharactersDescription())
+            foreach (var desc in _utilities!.GetActiveCharactersDescription()) // TODO: connect the pipe to AptContext
             {
                 var wasSelected = (_lastSelectedCharacter == desc.Index);
 
@@ -123,6 +124,20 @@ namespace OpenSage.Tools.AptEditor.UI.Widgets
                         System.Console.WriteLine($"Setting new character {desc.Index} {selectedCharacter.GetType().Name}");
                         manager.SetCharacter(selectedCharacter);
                         _decidingExportName = desc.ExportedName ?? desc.Name;
+
+                        // VM stuffs
+                        if (selectedCharacter is Sprite sprite)
+                        {
+                            var si = sprite.InitActions;
+                            if (si != null)
+                                manager.CurrentActions = new LogicalInstructions(si);
+                            else
+                                manager.CurrentActions = null;
+                        }
+                        else
+                        {
+                            manager.CurrentActions = null;
+                        }
                     }
                     DrawSelectedCharacterDescription(desc);
                 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using OpenSage.Data.Apt.Characters;
+using OpenSage.Gui.Apt.ActionScript.Library;
 
 namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 {
@@ -15,7 +16,7 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
         public override void Execute(ActionContext context)
         {
             var id = Parameters[0].ToInteger();
-            var member = context.Scope.Constants[id].ToString();
+            var member = context.Constants[id].ToString();
 
             //pop the object
             var objectVal = context.Pop();
@@ -46,17 +47,12 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
             //pop the member name
             var memberName = context.Pop().ToString();
             //pop the object
-            var p = context.Pop();
-            var obj = p.ToObject();
-
-            if (obj.IsBuiltInVariable(memberName))
-            {
-                obj.SetBuiltInVariable(memberName, valueVal);
-            }
+            var obj = context.Pop().ToObject();
+            if (obj is null)
+                throw new NotImplementedException("Do not know what to do in this situation");
             else
-            {
-                obj.Variables[memberName] = valueVal;
-            }
+                obj.SetMember(memberName, valueVal);
+
         }
     }
 
@@ -93,7 +89,7 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
         public override void Execute(ActionContext context)
         {
             var name = context.Pop().ToString();
-            context.Scope.Variables[name] = Parameters[0];
+            context.This.SetMember(name, Parameters[0]);
         }
     }
 
@@ -107,13 +103,8 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
         public override void Execute(ActionContext context)
         {
             //pop the value
-            var variableName = context.Pop();
-            Value variable = Value.Undefined();
-            if (context.Scope.Variables.ContainsKey(variableName.ToString()))
-            {
-                variable = context.Scope.Variables[variableName.ToString()];
-            }
-
+            var variableName = context.Pop().ToString();
+            Value variable = context.This.GetMember(variableName);
             context.Push(variable);
         }
     }
@@ -127,19 +118,9 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 
         public override void Execute(ActionContext context)
         {
-            //pop the value
             var valueVal = context.Pop();
-            //pop the member name
             var memberName = context.Pop().ToString();
-
-            if (context.CheckLocal(memberName))
-            {
-                context.Locals[memberName] = valueVal;
-            }
-            else
-            {
-                context.Scope.Variables[memberName] = valueVal;
-            }
+            context.This.SetMember(memberName, valueVal);
         }
     }
 
@@ -171,7 +152,7 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
             var property = context.Pop().ToEnum<PropertyType>();
             var target = context.GetTarget(context.Pop().ToString());
 
-            var prop = target.ToObject().GetProperty(property);
+            var prop = ((StageObject) target.ToObject()).GetProperty(property);
             context.Push(prop);
         }
     }
@@ -189,7 +170,37 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
             var property = context.Pop().ToEnum<PropertyType>();
             var target = context.GetTarget(context.Pop().ToString());
 
-            target.ToObject().SetProperty(property, value);
+             target.ToObject<StageObject>().SetProperty(property, value);
+        }
+    }
+
+    /// <summary>
+    /// clones a sprite to assigned depth and target.
+    /// </summary>
+    public sealed class CloneSprite : InstructionBase
+    {
+        public override InstructionType Type => InstructionType.CloneSprite;
+
+        public override void Execute(ActionContext context)
+        {
+            var depth = context.Pop();
+            var target = context.Pop();
+            var source = context.Pop();
+            throw new NotImplementedException();            
+        }
+    }
+
+    /// <summary>
+    /// removes a sprite.
+    /// </summary>
+    public sealed class RemoveSprite : InstructionBase
+    {
+        public override InstructionType Type => InstructionType.RemoveSprite;
+
+        public override void Execute(ActionContext context)
+        {
+            var target = context.Pop();
+            throw new NotImplementedException();
         }
     }
 
@@ -225,7 +236,7 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
             var memberVal = context.Pop().ToString();
             var objectVal = context.Pop().ToObject();
 
-            objectVal.Variables[memberVal] = Parameters[0];
+            objectVal.SetMember(memberVal, Parameters[0]);
         }
     }
 
@@ -239,17 +250,43 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
         public override void Execute(ActionContext context)
         {
             var name = context.Pop().ToString();
-            var nArgs = context.Pop().ToInteger();
+            var args = FunctionCommon.GetArgumentsFromStack(context);
 
-            Value[] args = new Value[nArgs];
+            context.ConstructObjectAndPush(name, args);
+        }
+    }
 
-            for (int i = 0; i < nArgs; ++i)
-            {
-                args[i] = context.Pop();
-            }
+    /// <summary>
+    /// From its name, looks like it corresponds to the method definition of ECMAScript.
+    /// Since it doesn't have any parameters, it should be using the stack.
+    /// </summary>
+    public sealed class NewMethod : InstructionBase
+    {
+        public override InstructionType Type => InstructionType.NewMethod;
 
-            var obj = context.ConstructObject(name, args);
-            context.Push(obj);
+        public override void Execute(ActionContext context)
+        {
+            var name = context.Pop().ToString();
+            var obj = context.Pop();
+            var args = FunctionCommon.GetArgumentsFromStack(context);
+            
+            if (name.Length != 0) obj = obj.ToObject().GetMember(name);
+            /*
+            if (name.Length == 0)
+                FunctionCommon.ExecuteFunction(obj, args, context.This, context);
+            else
+                FunctionCommon.ExecuteFunction(name, args, obj.ToObject(), context);
+            */
+            var thisVar = new ObjectContext(context.Apt.Avm);
+            context.PushRecallCode(new PushValue(Value.FromObject(thisVar)));
+            context.PushRecallCode(new Pop());
+            FunctionCommon.CreateFunctionContext(obj, args, context, thisVar);
+            /*
+            context.Apt.Avm.ExecuteUntilReturn();
+            context.Pop();
+            context.Push(Value.FromObject(thisVar));
+            */
+            
         }
     }
 
@@ -262,7 +299,16 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 
         public override void Execute(ActionContext context)
         {
-            throw new NotImplementedException();
+            var nArgs = context.Pop().ToInteger();
+            var obj = new ObjectContext(context.Apt.Avm);
+            for (int i = 0; i < nArgs; ++i)
+            {
+                var vi = context.Pop();
+                var ni = context.Pop().ToString();
+                obj.SetMember(ni, vi);
+            }
+
+            context.Push(Value.FromObject(obj));
         }
     }
 
@@ -292,19 +338,18 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
                     result = Value.FromString("number");
                     break;
                 case ValueType.Object:
-                    if (val.ToObject().Item.Character is Movie)
+                    if (val.ToObject() is MovieClip)
                         result = Value.FromString("movieclip");
+                    else if (val.ToObject() is Function)
+                        result = Value.FromString("function");
                     else
                         result = Value.FromString("object");
-                    break;
-                case ValueType.Function:
-                    result = Value.FromString("function");
                     break;
                 case ValueType.Undefined:
                     result = Value.FromString("undefined");
                     break;
                 default:
-                    throw new InvalidOperationException();
+                    throw new InvalidOperationException(val.Type.ToString());
             }
 
             context.Push(result);
@@ -312,8 +357,8 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
     }
 
     /// <summary>
-    /// From its name, looks like it extends an object.
-    /// Since it doesn't have any parameters, it might extend objects from the stack.
+    /// Set the inheritance structure of a class.
+    /// See https://www.adobe.com/content/dam/acom/en/devnet/pdf/swf-file-format-spec.pdf p.114 "ActionExtends"
     /// </summary>
     public sealed class Extends : InstructionBase
     {
@@ -321,13 +366,19 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 
         public override void Execute(ActionContext context)
         {
-            throw new NotImplementedException();
+            // TODO This will override functions in the old prototype of cls.
+            // I followed the document, but don't know if will cause issues.
+            var sup = context.Pop().ToFunction();
+            var cls = context.Pop().ToFunction();
+            var obj = new ObjectContext(context.Apt.Avm);
+            obj.__proto__ = sup.prototype;
+            obj.constructor = sup;
+            cls.prototype = obj;
         }
     }
 
     /// <summary>
-    /// From its name, looks like it corresponds to the `instanceof` keyword of ECMAScript.
-    /// Since it doesn't have any parameters, it should be using the stack.
+    /// Corresponds to the `instanceof` keyword of ECMAScript.
     /// </summary>
     public sealed class InstanceOf : InstructionBase
     {
@@ -335,7 +386,11 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 
         public override void Execute(ActionContext context)
         {
-            throw new NotImplementedException();
+            var constr = context.Pop().ToFunction();
+            var obj = context.Pop().ToObject();
+            var val = obj.InstanceOf(constr);
+            context.Push(Value.FromBoolean(val));
         }
     }
+
 }

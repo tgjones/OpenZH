@@ -14,28 +14,66 @@ namespace OpenSage.Gui.Apt
 
         public VM Avm { get; }
 
+        // TODO: Should be deprecated or implemented in other way. This one causes nothing but mess.
         public AptWindow Window { get; }
-        public ConstantData Constants => Window.AptFile.Constants;
-        //Time per frame in milliseconds
-        public uint MillisecondsPerFrame => Window.AptFile.Movie.MillisecondsPerFrame;
+        public AptFile AptFile { get; }
+        public ConstantData Constants => AptFile.Constants;
+        public uint MsPerFrame => AptFile != null ? AptFile.Movie.MillisecondsPerFrame : MsPerFrameDefault; // Java style. Any fancier implementations?
+        public static readonly uint MsPerFrameDefault = 30;
         public SpriteItem Root { get; set; }
 
-        public AptContext(AptWindow window)
-        {
-            Window = window;
-            _assetStore = window.AssetStore;
-
-            Avm = new VM();
-        }
-
-        //constructor to be used without an apt file
-        internal AptContext(ImageMap imageMap, string movieName, AssetStore assetStore)
+        // Most general one
+        internal AptContext(AssetStore assetStore, AptFile apt, VM avm, ImageMap imageMap, string movieName)
         {
             _assetStore = assetStore;
+
+            AptFile = apt;
+
+            if (avm == null) avm = new VM();
+                Avm = avm;
             _imageMap = imageMap;
             _movieName = movieName;
-            Avm = new VM();
+
+            
         }
+        //constructor to be used without an apt file
+        internal AptContext(ImageMap imageMap, string movieName, AssetStore assetStore) : this(assetStore, null, null, imageMap, movieName) { }
+
+        public AptContext(AssetStore assetStore, AptFile apt, VM avm) : this(assetStore, apt, avm, null, null) { }
+        public AptContext(AptWindow window) : this(window, null) { Window = window; }
+        public AptContext(AptWindow window, VM avm): this(window.AssetStore, window.AptFile, avm) { Window = window; }
+        
+        // TODO resolve dependencies?
+        public AptContext LoadContext()
+        {
+            var movie = AptFile.Movie;
+            var global = Avm.GlobalObject;
+            var extobj = Avm.ExternObject;
+
+            // Data.Apt should be only containers with no calculations
+            // resolve imports
+            foreach (Import import in movie.Imports)
+            {
+                AptFile af = null;
+            }
+
+            // attach initactions properly to sprites
+            foreach (Character c in movie.Characters)
+            {
+                // currently did by AptFile
+            }
+
+            // resolve exports
+            foreach (Export export in movie.Exports)
+            {
+                var chrname = export.Name;
+                var character = movie.Characters[(int)export.Character];
+            }
+
+
+            return this;
+        }
+        
 
         //need this to handle import/export correctly
         public Character GetCharacter(int id, Character callee)
@@ -44,6 +82,11 @@ namespace OpenSage.Gui.Apt
             var movie = callee.Container.Movie;
 
             return movie.Characters[id];
+        }
+
+        public DisplayItem GetInstantiatedCharacter(int id, Character callee)
+        {
+            return null;
         }
 
         public Geometry GetGeometry(uint id, Character callee)

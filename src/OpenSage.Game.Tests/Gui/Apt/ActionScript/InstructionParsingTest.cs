@@ -4,6 +4,7 @@ using OpenSage.Data.Apt;
 using OpenSage.Gui.Apt;
 using OpenSage.Gui.Apt.ActionScript;
 using OpenSage.Gui.Apt.ActionScript.Opcodes;
+using OpenSage.Gui.Apt.ActionScript.Library;
 using Xunit;
 using Xunit.Abstractions;
 using static System.Text.Encoding;
@@ -73,7 +74,7 @@ namespace OpenSage.Tests.Gui.Apt.ActionScript
                 instructionWriter.WriteSimpleInstruction(InstructionType.SetVariable);
                 instructionWriter.WriteSimpleInstruction(InstructionType.End);
                 instructionWriter.WriteSimpleInstruction(InstructionType.EA_PushOne);
-                instructionWriter.WriteSimpleInstruction(InstructionType.Not);
+                instructionWriter.WriteSimpleInstruction(InstructionType.LogicalNot);
                 instructionWriter.WriteSimpleInstruction(InstructionType.BranchIfTrue, 18);
                 instructionWriter.WriteSimpleInstruction(InstructionType.EA_PushString, variableNamePosition);
                 instructionWriter.WriteSimpleInstruction(InstructionType.EA_PushString, rightValuePosition);
@@ -113,9 +114,10 @@ namespace OpenSage.Tests.Gui.Apt.ActionScript
             // Assert that after parsing instructions, stream will be sought back
             Assert.True(afterInstructions == magic);
 
-            var context = new ObjectContext(new SpriteItem());
             var vm = new VM();
-            vm.Execute(collection, context, new List<ConstantEntry>());
+            var context = new StageObject(new SpriteItem(), vm);
+            
+            vm.Execute(collection, context, null);
             // Assert that during execution of instructions, the right value is set
             Assert.True(context.GetMember(paramName).ToString().Equals(rightValue));
         }

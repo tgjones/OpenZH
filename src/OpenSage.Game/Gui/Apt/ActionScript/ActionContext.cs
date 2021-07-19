@@ -3,31 +3,131 @@ using System.Collections.Generic;
 using System.Linq;
 using OpenSage.Data.Apt;
 using OpenSage.Gui.Apt.ActionScript.Library;
+using OpenSage.Gui.Apt.ActionScript.Opcodes;
 
 namespace OpenSage.Gui.Apt.ActionScript
 {
     public sealed class ActionContext
     {
-        public ObjectContext Scope { get; set; }
-        public ObjectContext Global { get; set; }
+        public ObjectContext This { get; private set; }
+        public ObjectContext Global { get; private set; }
+        public ActionContext Outer { get; private set; } 
         public AptContext Apt { get; set; }
         public InstructionStream Stream { get; set; }
-        public Value[] Registers { get; set; }
-        public Dictionary<string, Value> Params { get; set; }
-        public Dictionary<string, Value> Locals { get; set; }
+        public int RegisterCount { get; private set; }
+        public Dictionary<string, Value> Params { get; private set; }
+        private Dictionary<string, Value> _locals; 
         public bool Return { get; set; }
-        public List<ConstantEntry> Constants { get; set; }
+        public bool Halt { get; set; }
+        public List<ConstantEntry> GlobalConstantPool => Apt.Constants.Entries;
+        public List<Value> Constants { get; set; }
 
         private Stack<Value> _stack;
+        private Stack<InstructionBase> _immiexec;
+        private Value[] _registers { get; set; }
 
-        public ActionContext(int numRegisters = 0)
+        public ActionContext(ObjectContext globalVar, ObjectContext thisVar, ActionContext outerVar, int numRegisters = 0)
         {
+            // assignments
+            Global = globalVar;
+            This = thisVar;
+            if (outerVar == this) outerVar = null;
+            Outer = outerVar; // null if the most outside
+            RegisterCount = numRegisters;
+
+            // initializations
             _stack = new Stack<Value>();
-            Registers = new Value[numRegisters];
+            _immiexec = new Stack<InstructionBase>();
+            _registers = new Value[RegisterCount];
             Params = new Dictionary<string, Value>();
-            Locals = new Dictionary<string, Value>();
-            Constants = new List<ConstantEntry>();
+            _locals = new Dictionary<string, Value>();
+            Constants = new List<Value>();
             Return = false;
+        }
+
+        // basics
+
+        public bool IsOutermost() { return Outer == null || Outer == this; }
+
+        public void PushRecallCode(InstructionBase inst) { _immiexec.Push(inst); }
+        public InstructionBase PopRecallCode() { return _immiexec.Pop(); }
+        public InstructionBase FirstRecallCode() { return _immiexec.Peek(); }
+        public bool HasRecallCode() { return _immiexec.Count != 0; }
+
+        // constant operations
+
+        public void ReformConstantPool(List<Value> Parameters)
+        {
+            var pool = new List<Value>();
+
+            for (var i = 0; i < Parameters.Count; ++i)
+            {
+                Value result;
+                var entry = GlobalConstantPool[Parameters[i].ToInteger()];
+                switch (entry.Type)
+                {
+                    case ConstantEntryType.String:
+                        result = Value.FromString((string) entry.Value);
+                        break;
+                    case ConstantEntryType.Register:
+                        result = Value.FromRegister((uint) entry.Value);
+                        break;
+                    default:
+                        throw new NotImplementedException();
+                }
+                pool.Add(result);
+            }
+
+            Constants = pool;
+        }
+
+        // register operations
+
+        public bool RegisterStored(int id) { return _registers[id] != null; }
+
+        public Value GetRegister(int id) {
+            if (id < 0 || id >= RegisterCount)
+            {
+                throw new InvalidOperationException($"Register number {id} is not appropriate! it should be 0~{RegisterCount - 1}.");
+            }
+            else
+            {
+                return RegisterStored(id) ? _registers[id] : Value.Undefined() ;
+            }
+            
+        }
+
+        public void SetRegister(int id, Value val)
+        {
+            if (id < 0 || id >= RegisterCount)
+            {
+                throw new InvalidOperationException($"Register number {id} is not appropriate! it should be 0~{RegisterCount - 1}.");
+            }
+            else
+            {
+                _registers[id] = val;
+            }
+        }
+
+        public string DumpRegister()
+        {
+            var ans = $"Total {RegisterCount} Registers";
+            for (int i = 0; i < RegisterCount; ++i)
+            {
+                if (_registers[i] != null) ans = ans + $"\n[{i}]{_registers[i].ToStringWithType(this)}";
+            }
+            return ans;
+        }
+
+        // stack operations
+
+        public string DumpStack()
+        {
+            var stack_val = _stack.ToArray();
+            var ans = String.Join("|", stack_val.Select(x => x.ToStringWithType(this)).ToArray());
+
+            ans = String.Format("TOP|{0}|BOTTOM", ans);
+            return ans;
         }
 
         public void Push(Value v)
@@ -37,13 +137,21 @@ namespace OpenSage.Gui.Apt.ActionScript
 
         public Value Peek()
         {
-            return _stack.Peek().ResolveConstant(this).ResolveRegister(this);
+            var ret = _stack.Peek();
+            if (ReferenceEquals(ret, Value.Indexed))
+                ret = PushToIndex.PopValue();
+            return ret.ResolveConstant(this).ResolveRegister(this);
         }
 
         public Value Pop()
         {
-            return _stack.Pop().ResolveConstant(this).ResolveRegister(this);
+            var ret = _stack.Pop();
+            if (ReferenceEquals(ret, Value.Indexed))
+                ret = PushToIndex.PopValue();
+            return ret.ResolveConstant(this).ResolveRegister(this);
         }
+
+        // parameters
 
         /// <summary>
         /// Check if a specific string is a parameter in the current params
@@ -70,9 +178,34 @@ namespace OpenSage.Gui.Apt.ActionScript
         /// </summary>
         /// <param name="name">variable name</param>
         /// <returns></returns>
-        public bool CheckLocal(string name)
+        public bool HasValueOnLocal(string name)
         {
-            return Locals.ContainsKey(name);
+            if (!IsOutermost())
+            {
+                return _locals.ContainsKey(name);
+            }
+            else
+            {
+                return Global.HasMember(name);
+            }
+            
+        }
+
+        public bool HasValueOnChain(string name)
+        {
+            var ans = false;
+            var env = this;
+            while (env != null)
+            {
+                if (env.HasValueOnLocal(name))
+                {
+                    ans = true;
+                    break;
+                }
+                env = env.Outer;
+            }
+
+            return ans;
         }
 
         /// <summary>
@@ -80,11 +213,87 @@ namespace OpenSage.Gui.Apt.ActionScript
         /// </summary>
         /// <param name="name">local name</param>
         /// <returns></returns>
-        public Value GetLocal(string name)
+        public Value GetValueOnLocal(string name)
         {
-            return Locals[name];
+            if (!IsOutermost())
+            {
+                return HasValueOnLocal(name) ? _locals[name] : Value.Undefined();
+            }
+            else
+            {
+                return Global.GetMember(name);
+            }
         }
 
+        public Value GetValueOnChain(string name)
+        {
+            var ans = Value.Undefined();
+            var env = this;
+            while (env != null)
+            {
+                if (env.HasValueOnLocal(name))
+                {
+                    ans = env.GetValueOnLocal(name);
+                    break;
+                }
+                env = env.Outer;
+            }
+
+            return ans;
+        }
+
+        public void SetValueOnLocal(string name, Value val)
+        {
+            if (!IsOutermost())
+            {
+                _locals[name] = val;
+            }
+            else
+            {
+                Global.SetMember(name, val);
+            }
+        }
+
+        public void SetValueOnChain(string name, Value val)
+        {
+            var env = this;
+            while (env != null)
+            {
+                if (env.HasValueOnLocal(name))
+                {
+                    env.SetValueOnLocal(name, val);
+                    return;
+                }
+                env = env.Outer;
+            }
+            SetValueOnLocal(name, val);
+        }
+
+        public void DeleteValueOnLocal(string name)
+        {
+            if (!IsOutermost())
+            {
+                if (HasValueOnLocal(name)) _locals.Remove(name);
+            }
+            else
+            {
+                Global.DeleteMember(name);
+            }
+        }
+
+        public void DeleteValueOnChain(string name)
+        {
+            var env = this;
+            while (env != null)
+            {
+                if (env.HasValueOnLocal(name))
+                {
+                    env.DeleteValueOnLocal(name);
+                    return;
+                }
+                env = env.Outer;
+            }
+        }
 
         /// <summary>
         /// Checks for special handled/global objects. After that checks for child objects of the
@@ -98,11 +307,11 @@ namespace OpenSage.Gui.Apt.ActionScript
 
             if (Builtin.IsBuiltInVariable(name))
             {
-                obj = Builtin.GetBuiltInVariable(name, Scope);
+                obj = Builtin.GetBuiltInVariable(name, This);
             }
             else
             {
-                obj = Scope.GetMember(name);
+                obj = This.GetMember(name);
             }
 
             return obj;
@@ -117,20 +326,20 @@ namespace OpenSage.Gui.Apt.ActionScript
         {
             //empty target means the current scope
             if (target.Length == 0)
-                return Value.FromObject(Scope);
+                return Value.FromObject(This);
 
             //depending on wether or not this is a relative path or not
-            ObjectContext obj = target.First() == '/' ? Apt.Root.ScriptObject : Scope;
+            ObjectContext obj = target.First() == '/' ? Apt.Root.ScriptObject : This;
 
             foreach (var part in target.Split('/'))
             {
                 if (part == "..")
                 {
-                    obj = obj.GetParent();
+                    obj = ((StageObject) obj).GetParent();
                 }
                 else
                 {
-                    obj = obj.Variables[part].ToObject();
+                    obj = obj.GetMember(part).ToObject();
                 }
             }
 
@@ -142,19 +351,25 @@ namespace OpenSage.Gui.Apt.ActionScript
         /// </summary>
         /// <param name="constructor"></param>
         /// <returns></returns>
-        public Value ConstructObject(string name, Value[] args)
+        public void ConstructObjectAndPush(string name, Value[] args) // TODO need reconstruction
         {
-            Value result = null;
-            if (Builtin.IsBuiltInClass(name))
+            var funcVal = GetValueOnChain(name);
+            Value ret = null;
+            if (funcVal.Type != ValueType.Object || !funcVal.ToObject().IsFunction())
             {
-                result = Builtin.GetBuiltInClass(name, args);
+                throw new InvalidOperationException("Not a function");
             }
             else
             {
-                throw new NotImplementedException();
+                var cst_func = funcVal.ToFunction();
+                var thisVar = Apt.Avm.ConstructClass(cst_func);
+                PushRecallCode(new PushValue(Value.FromObject(thisVar)));
+                PushRecallCode(new Pop());
+                cst_func.Invoke(this, thisVar, args);
+                // Apt.Avm.ExecuteUntilReturn();
+                // Pop(); // discard the returned value
+                // ret = Value.FromObject(thisVar);
             }
-
-            return result;
         }
 
         /// <summary>
@@ -169,7 +384,7 @@ namespace OpenSage.Gui.Apt.ActionScript
             //order is important
             if (flags.HasFlag(FunctionPreloadFlags.PreloadThis))
             {
-                Registers[reg] = Value.FromObject(Scope);
+                _registers[reg] = Value.FromObject(This);
                 ++reg;
             }
             if (flags.HasFlag(FunctionPreloadFlags.PreloadArguments))
@@ -182,22 +397,22 @@ namespace OpenSage.Gui.Apt.ActionScript
             }
             if (flags.HasFlag(FunctionPreloadFlags.PreloadRoot))
             {
-                Registers[reg] = Value.FromObject(Apt.Root.ScriptObject);
+                _registers[reg] = Value.FromObject(Apt.Root.ScriptObject);
                 ++reg;
             }
             if (flags.HasFlag(FunctionPreloadFlags.PreloadParent))
             {
-                Registers[reg] = Value.FromObject(Scope.GetParent());
+                _registers[reg] = Value.FromObject(((StageObject) This).GetParent());
                 ++reg;
             }
             if (flags.HasFlag(FunctionPreloadFlags.PreloadGlobal))
             {
-                Registers[reg] = Value.FromObject(Apt.Avm.GlobalObject);
+                _registers[reg] = Value.FromObject(Apt.Avm.GlobalObject);
                 ++reg;
             }
             if (flags.HasFlag(FunctionPreloadFlags.PreloadExtern))
             {
-                Registers[reg] = Value.FromObject(Apt.Avm.ExternObject);
+                _registers[reg] = Value.FromObject(Apt.Avm.ExternObject);
                 ++reg;
             }
             if (!flags.HasFlag(FunctionPreloadFlags.SupressSuper))
@@ -212,7 +427,7 @@ namespace OpenSage.Gui.Apt.ActionScript
 
             if (!flags.HasFlag(FunctionPreloadFlags.SupressThis))
             {
-                Locals["this"] = Value.FromObject(Scope);
+                _locals["this"] = Value.FromObject(This);
             }
         }
     }

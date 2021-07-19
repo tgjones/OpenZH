@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using OpenSage.Gui.Apt.ActionScript.Library;
 
 namespace OpenSage.Gui.Apt.ActionScript
 {
@@ -21,7 +22,7 @@ namespace OpenSage.Gui.Apt.ActionScript
             else
             {
                 //DO STUFF
-                var targetObject = context.Scope.Variables[target].ToObject();
+                var targetObject = context.This.Variables[target].ToObject<StageObject>();
 
                 if (!(targetObject.Item is SpriteItem))
                 {

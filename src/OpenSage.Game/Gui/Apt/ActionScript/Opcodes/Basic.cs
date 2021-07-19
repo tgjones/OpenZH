@@ -1,4 +1,5 @@
 ﻿using System;
+using OpenSage.Data.Apt;
 
 namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 {
@@ -11,7 +12,7 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 
         public override void Execute(ActionContext context)
         {
-            throw new NotImplementedException();
+            context.Halt = true;
         }
     }
 
@@ -25,14 +26,7 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 
         public override void Execute(ActionContext context)
         {
-            //create a new constantpool
-            var pool = context.Scope.Constants;
-            pool.Clear();
-
-            for (var i = 0; i < Parameters.Count; ++i)
-            {
-                pool.Add(Parameters[i].ResolveConstant(context));
-            }
+            context.ReformConstantPool(Parameters);
         }
     }
 
@@ -66,7 +60,7 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 
             //store the value inside the specified register
             var reg = Parameters[0].ToInteger();
-            context.Registers[reg] = val;
+            context.SetRegister(reg, val);
         }
     }
 
@@ -87,12 +81,14 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
                 args[i] = context.Pop();
             }
 
-            context.Push(Value.FromArray(args));
+            context.Push(Value.FromArray(args, context.Apt.Avm));
         }
     }
 
     /// <summary>
     /// Pops a property name and an object from the stack. Then deletes the property in that object
+    /// The description file says "property", but one can't access a property from a string,
+    /// so I take the "property" as "member".
     /// </summary>
     public sealed class Delete : InstructionBase
     {
@@ -100,6 +96,9 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 
         public override void Execute(ActionContext context)
         {
+            var property = context.Pop().ToString();
+            var target = context.GetTarget(context.Pop().ToString());
+            target.ToObject().DeleteMember(property);
         }
     }
 
@@ -112,7 +111,8 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 
         public override void Execute(ActionContext context)
         {
-            throw new NotImplementedException();
+            var property = context.Pop().ToString();
+            context.DeleteValueOnChain(property);
         }
     }
 
@@ -127,8 +127,21 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
         {
             var value = context.Pop();
             var varName = context.Pop().ToString();
+            context.SetValueOnLocal(varName, value);
+        }
+    }
 
-            context.Locals[varName] = value;
+    public sealed class DefineLocal2 : InstructionBase
+    {
+        public override InstructionType Type => InstructionType.Var;
+
+        public override void Execute(ActionContext context)
+        {
+            var varName = context.Pop().ToString();
+            if (context.HasValueOnLocal(varName))
+                return;
+            else
+                context.SetValueOnLocal(varName, Value.Undefined()); 
         }
     }
 
@@ -141,7 +154,8 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 
         public override void Execute(ActionContext context)
         {
-            throw new NotImplementedException();
+            var val = context.Pop();
+            context.Push(Value.FromInteger(val.ToInteger()));
         }
     }
 
@@ -172,7 +186,7 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
             var obj = context.Pop().ToObject();
             context.Push(Value.FromObject(null));
             // Not sure if this is correct
-            foreach (var slot in obj.Variables.Keys)
+            foreach (var slot in obj.GetAllProperties())
             {
                 context.Push(Value.FromString(slot));
             }
@@ -189,6 +203,7 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
         public override void Execute(ActionContext context)
         {
             // TODO: fix this
+            // TODO: see definelocal2
             //throw new NotImplementedException();
         }
     }
@@ -207,6 +222,53 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 
             var rnd = new Random();
             context.Push(Value.FromInteger(rnd.Next(0, max)));
+        }
+    }
+
+    /// <summary>
+    /// Unknown yet
+    /// </summary>
+    public sealed class ImplementsOp: InstructionBase
+    {
+        public override InstructionType Type => InstructionType.ImplementsOp;
+
+        public override void Execute(ActionContext context)
+        {
+            throw new NotImplementedException(context.DumpStack());
+            var cst = context.Pop().ToFunction();
+            Value[] args = FunctionCommon.GetArgumentsFromStack(context);
+        }
+    }
+
+    /// <summary>
+    /// Unknown yet
+    /// </summary>
+    public sealed class CastOp : InstructionBase
+    {
+        public override InstructionType Type => InstructionType.CastOp;
+
+        public override void Execute(ActionContext context)
+        {
+            var obj = context.Pop().ToObject();
+            var cst = context.Pop().ToFunction();
+            ObjectContext val = obj.InstanceOf(cst) ? obj : null;
+            context.Push(Value.FromObject(val));
+        }
+    }
+
+    /// <summary>
+    /// Shall be the same as getTime in ActionSctipt.
+    /// Need to be certained: the description file says getting the millseconds since Flash Player started.
+    /// So this action will get the millseconds since the program started.
+    /// The return value shall be put in stack.
+    /// </summary>
+    public sealed class GetTime: InstructionBase
+    {
+        public override InstructionType Type => InstructionType.GetTime;
+
+        public override void Execute(ActionContext context)
+        {
+            context.Global.CallBuiltInFunction(context, "getTime", null);
         }
     }
 }

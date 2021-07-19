@@ -50,6 +50,9 @@ namespace OpenSage.Mathematics
             return $"({R},{G},{B},{A})";
         }
 
+        public int ToInteger() { return (R & 0xFF) << 6 + (G & 0xFF) << 4 + (B & 0xFF) << 2 + (A & 0xFF); }
+        public int ToIntegerRGB() { return (R & 0xFF) << 4 + (G & 0xFF) << 2 + (B & 0xFF); }
+
         public static ColorRgba FromHex(in ColorRgba original, string hexString)
         {
             var hexVal = Convert.ToUInt32(hexString, 16);

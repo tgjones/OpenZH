@@ -2,6 +2,7 @@
 using OpenSage.Data.Apt;
 using OpenSage.Data.Apt.Characters;
 using OpenSage.Gui.Apt.ActionScript;
+using OpenSage.Gui.Apt.ActionScript.Library;
 using Veldrid;
 
 namespace OpenSage.Gui.Apt
@@ -22,7 +23,7 @@ namespace OpenSage.Gui.Apt
             Character = character;
             Context = context;
             Parent = parent;
-            ScriptObject = new ObjectContext(this);
+            ScriptObject = new StageObject(this);
             Name = "";
             Visible = true;
             TextValue = character is Text text ? LocalizedString.CreateApt(text.Content) : null;
@@ -37,7 +38,7 @@ namespace OpenSage.Gui.Apt
                 return;
             }
 
-            if ((gt.TotalTime - _lastUpdate.TotalTime).TotalMilliseconds < Context.MillisecondsPerFrame)
+            if ((gt.TotalTime - _lastUpdate.TotalTime).TotalMilliseconds < Context.MsPerFrame)
             {
                 return;
             }

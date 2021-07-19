@@ -14,12 +14,26 @@ namespace OpenSage.Gui.Apt.ActionScript
         /// <summary>
         /// the current instruction
         /// </summary>
-        private int _index;
+        public int Index { get; private set;  }
 
         public InstructionStream(InstructionCollection instructions)
         {
             _instructions = instructions;
-            _index = 0;
+            Index = 0;
+        }
+
+        /// <summary>
+        /// Get an instruction and move to the next instruction right away. Skip paddings
+        /// </summary>
+        /// <returns></returns>
+        public InstructionBase GetInstructionNoMove()
+        {
+            if (Index < 0 || _instructions.Count < Index - 1)
+            {
+                throw new IndexOutOfRangeException();
+            }
+
+            return _instructions.GetInstructionByIndex(Index);
         }
 
         /// <summary>
@@ -28,12 +42,12 @@ namespace OpenSage.Gui.Apt.ActionScript
         /// <returns></returns>
         public InstructionBase GetInstruction()
         {
-            if (_index < 0 || _instructions.Count < _index - 1)
+            if (Index < 0 || _instructions.Count < Index - 1)
             {
                 throw new IndexOutOfRangeException();
             }
 
-            return _instructions.GetInstructionByIndex(_index++);
+            return _instructions.GetInstructionByIndex(Index++);
         }
 
         /// <summary>
@@ -44,11 +58,11 @@ namespace OpenSage.Gui.Apt.ActionScript
         public InstructionCollection GetInstructions(int bytes)
         {
             // get the amount of instructions contained in that byterange
-            var startPosition = _instructions.GetPositionByIndex(_index);
+            var startPosition = _instructions.GetPositionByIndex(Index);
             var endPosition = startPosition + bytes;
 
 
-            var subRange = _instructions.GetPositionedInstructions().Skip(_index).TakeWhile((kv) => kv.Key < endPosition);
+            var subRange = _instructions.GetPositionedInstructions().Skip(Index).TakeWhile((kv) => kv.Key < endPosition);
             if (subRange.Any() && subRange.First().Key != startPosition) // sanity check
             {
                 throw new InvalidOperationException("Didn't not get the right instructions!");
@@ -59,7 +73,7 @@ namespace OpenSage.Gui.Apt.ActionScript
             {
                 instructions.Add(position, instruction);
             }
-            _index += instructions.Count;
+            Index += instructions.Count;
 
             return new InstructionCollection(instructions);
         }
@@ -71,7 +85,7 @@ namespace OpenSage.Gui.Apt.ActionScript
         /// <returns></returns>
         public bool IsFinished()
         {
-            return _index == _instructions.Count || _index == -1;
+            return Index == _instructions.Count || Index == -1;
         }
 
         /// <summary>
@@ -80,9 +94,15 @@ namespace OpenSage.Gui.Apt.ActionScript
         /// <param name="offset">The offset how much to move in bytes</param>
         public void Branch(int offset)
         {
-            var startPosition = _instructions.GetPositionByIndex(_index);
+            var startPosition = _instructions.GetPositionByIndex(Index);
             var destinationPosition = startPosition + offset;
-            _index = _instructions.GetIndexByPosition(destinationPosition);
+            Index = _instructions.GetIndexByPosition(destinationPosition);
+        }
+
+        // TODO: OOB Check?
+        public void GotoIndex(int index)
+        {
+            Index = index;
         }
     }
 }

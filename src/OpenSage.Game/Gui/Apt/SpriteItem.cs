@@ -5,6 +5,7 @@ using OpenSage.Data.Apt.Characters;
 using OpenSage.Data.Apt.FrameItems;
 using OpenSage.Graphics;
 using OpenSage.Gui.Apt.ActionScript;
+using OpenSage.Gui.Apt.ActionScript.Library;
 using OpenSage.Mathematics;
 using Veldrid;
 using Action = OpenSage.Data.Apt.FrameItems.Action;
@@ -38,6 +39,7 @@ namespace OpenSage.Gui.Apt
         public int CurrentFrame => (int) _currentFrame;
 
         public Dictionary<string, uint> FrameLabels { get; private set; }
+        public List<Action> InitActionList { get; set; }
         public PlayState State { get; private set; }
 
         public override void Create(Character character, AptContext context, SpriteItem parent = null)
@@ -56,7 +58,7 @@ namespace OpenSage.Gui.Apt
             Context = context;
             Content = AddDisposable(new DisplayList());
             Parent = parent;
-            ScriptObject = new ObjectContext(this);
+            ScriptObject = new StageObject(this);
 
             // Fill the frameLabels in advance
             foreach (var frame in _sprite.Frames)
@@ -202,7 +204,7 @@ namespace OpenSage.Gui.Apt
             if (State == PlayState.STOPPED)
                 return false;
 
-            if ((gt.TotalTime - _lastUpdate.TotalTime).TotalMilliseconds >= Context.MillisecondsPerFrame)
+            if ((gt.TotalTime - _lastUpdate.TotalTime).TotalMilliseconds >= Context.MsPerFrame)
             {
                 _lastUpdate = gt;
                 return true;
@@ -241,6 +243,10 @@ namespace OpenSage.Gui.Apt
                 case Action action:
                     _actionList.Add(action);
                     break;
+                case InitAction iaction:
+                    break;
+                    // TODO 
+                    //throw new NotImplementedException("init action test");
                 case BackgroundColor bg:
                     if (SetBackgroundColor != null)
                     {
@@ -352,7 +358,7 @@ namespace OpenSage.Gui.Apt
                         if (clipEvent.Flags.HasFlag(ClipEventFlags.Initialize))
                         {
                             Context.Avm.Execute(clipEvent.Instructions, displayItem.ScriptObject,
-                                                Character.Container.Constants.Entries);
+                                                Context);
                         }
                     }
                 }
@@ -374,7 +380,7 @@ namespace OpenSage.Gui.Apt
             foreach (var action in _actionList)
             {
                 Context.Avm.Execute(action.Instructions, ScriptObject,
-                        ScriptObject.Item.Character.Container.Constants.Entries);
+                        ScriptObject.Item.Context); // original: Character.Container.Constants.Entries not sure if the same
             }
             _actionList.Clear();
 
@@ -401,7 +407,7 @@ namespace OpenSage.Gui.Apt
 
         public DisplayItem GetNamedItem(string name)
         {
-            return ScriptObject.Variables[name].ToObject().Item;
+            return ((StageObject) ScriptObject.Variables[name].ToObject()).Item;
         }
     }
 }

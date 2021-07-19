@@ -49,7 +49,8 @@ namespace OpenSage.Gui.Apt
             AptFile = aptFile;
 
             //Create our context
-            _context = new AptContext(this);
+            var context_avm = new VM(HandleCommand, HandleVariable, HandleMovie);
+            _context = new AptContext(this, context_avm);
 
             //First thing to do here is to initialize the display list
             Root = AddDisposable(new SpriteItem
@@ -60,9 +61,6 @@ namespace OpenSage.Gui.Apt
             Root.Create(aptFile.Movie, _context);
 
             _context.Root = Root;
-            _context.Avm.CommandHandler = HandleCommand;
-            _context.Avm.VariableHandler = HandleVariable;
-            _context.Avm.MovieHandler = HandleMovie;
 
             var m = Root.Character as Movie;
             _movieSize = new Vector2(m.ScreenWidth, m.ScreenHeight);
@@ -75,6 +73,7 @@ namespace OpenSage.Gui.Apt
         internal void Layout(GraphicsDevice gd, in Size windowSize)
         {
             _destinationSize = new Vector2(windowSize.Width, windowSize.Height);
+
         }
 
         internal bool HandleInput(Point2D mousePos, bool mouseDown)

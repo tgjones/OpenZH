@@ -5,6 +5,7 @@ using OpenSage.Data.Apt;
 using OpenSage.Data.Apt.Characters;
 using OpenSage.Data.Apt.FrameItems;
 using OpenSage.Gui.Apt;
+using OpenSage.Gui.Apt.ActionScript;
 
 namespace OpenSage.Tools.AptEditor.Apt
 {
@@ -12,7 +13,9 @@ namespace OpenSage.Tools.AptEditor.Apt
     {
         private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
         public DisplayItem Item { get; }
-
+        public new AptContext Context => Item.Context;
+        public new Character Character => Item.Character;
+        public new ObjectContext ScriptObject => Item.ScriptObject;
         public WrappedDisplayItem(Character character, AptContext context, SpriteItem parent)
         {
             Visible = true;
@@ -24,6 +27,7 @@ namespace OpenSage.Tools.AptEditor.Apt
             });
             Item.Transform = ItemTransform.None;
             Item.Create(character, context, parent);
+            // ScriptObject = Item.ScriptObject;
         }
 
         public override void Create(Character character, AptContext context, SpriteItem? parent = null)
@@ -37,6 +41,7 @@ namespace OpenSage.Tools.AptEditor.Apt
         }
 
         // Play frames without executing actions, since currently we can't handle all actions properly anyway.
+        // TODO: may cause a huge perfoemance loss
         public void PlayToFrameNoActions(int frameNumber)
         {
             if (!(Item is SpriteItem))
@@ -96,7 +101,7 @@ namespace OpenSage.Tools.AptEditor.Apt
                 {
                     case FrameLabel _:
                     case Data.Apt.FrameItems.Action _: // no actions
-                    case InitAction _:
+                    // case InitAction _:
                         break;
                     default:
                         sprite.HandleFrameItem(item);
@@ -122,7 +127,7 @@ namespace OpenSage.Tools.AptEditor.Apt
                     case ButtonItem button:
                     case RenderItem render:
                         // currently these item's Update does nothing
-                        item.Update(new TimeInterval(sprite.Context.MillisecondsPerFrame, 0));
+                        item.Update(new TimeInterval(sprite.Context.MsPerFrame, 0));
                         break;
                     default:
                         throw new NotImplementedException();

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using OpenSage.Gui.Apt.ActionScript;
 
 namespace OpenSage.Gui.Apt.ActionScript.Library
 {
@@ -14,34 +15,59 @@ namespace OpenSage.Gui.Apt.ActionScript.Library
         private static readonly Dictionary<string, Action<ActionContext, ObjectContext, Value[]>> BuiltinFunctions;
         private static readonly Dictionary<string, Func<ObjectContext, Value>> BuiltinVariablesGet;
         private static readonly Dictionary<string, Action<ObjectContext, Value>> BuiltinVariablesSet;
+        public static DateTime InitTimeStamp { get; } = DateTime.Now;
 
         static Builtin()
         {
             // list of builtin objects and their corresponding constructors
             BuiltinClasses = new Dictionary<string, Func<Value[], Value>>
             {
-                ["Color"] = args => Value.FromObject(new ASColor()),
-                ["Array"] = args => Value.FromObject(new ASArray(args))
+                // ["Color"] = args => Value.FromObject(new ASColor()),
+                // ["Array"] = args => Value.FromObject(new ASArray(args)),
+                //["Object"] = Function.ObjectConstructor,
+                //["Function"] = Function.FunctionConstructor,
+            };
+
+            // list of builtin functions
+            BuiltinFunctions = new Dictionary<string, Action<ActionContext, ObjectContext, Value[]>>
+            {
+                // MovieClip methods
+                // ["gotoAndPlay"] = (actx, ctx, args) => GotoAndPlay(actx, ctx, args),
+                // ["gotoAndStop"] = (actx, ctx, args) => GotoAndStop(ctx, args),
+                // ["stop"] = (actx, ctx, args) => Stop(ctx),
+                ["loadMovie"] = LoadMovie,
+                ["attachMovie"] = AttachMovie,
+
+                // Global constructors / functions
+                ["Boolean"] = BoolFunc,
+                ["getTime"] = (actx, ctx, args) => GetTime(actx),
+                ["clearInterval"] = ClearInterval,
+                ["setInterval"] = SetInterval,
+
+                
+
             };
 
             // list of builtin variables
             BuiltinVariablesGet = new Dictionary<string, Func<ObjectContext, Value>>
             {
                 // Globals
-                ["_root"] = ctx => Value.FromObject(ctx.Item.Context.Root.ScriptObject),
-                ["_global"] = ctx => Value.FromObject(ctx.Item.Context.Avm.GlobalObject),
-                ["extern"] = ctx => Value.FromObject(ctx.Item.Context.Avm.ExternObject),
-                // Object specifc
-                ["_parent"] = GetParent,
-                ["_name"] = ctx => Value.FromString(ctx.Item.Name),
-                ["_x"] = GetX,
-                ["_y"] = GetY,
-                ["_currentframe"] = ctx => Value.FromInteger(((SpriteItem) ctx.Item).CurrentFrame),
+                // ["_root"] = ctx => Value.FromObject(ctx.Item.Context.Root.ScriptObject),
+                // ["_global"] = ctx => Value.FromObject(ctx.Item.Context.Avm.GlobalObject),
+                // ["extern"] = ctx => Value.FromObject(ctx.Item.Context.Avm.ExternObject),
+
+                // MovieClip methods
+                // ["_parent"] = GetParent,
+                // ["_name"] = ctx => Value.FromString(ctx.Item.Name),
+                // ["_x"] = GetX,
+                // ["_y"] = GetY,
+                // ["_currentframe"] = ctx => Value.FromInteger(((SpriteItem) ctx.Item).CurrentFrame),
             };
 
             // list of builtin variables - set
             BuiltinVariablesSet = new Dictionary<string, Action<ObjectContext, Value>>
             {
+                /*
                 ["_alpha"] = (ctx, v) =>
                 {
                     var transform = ctx.Item.Transform;
@@ -60,21 +86,8 @@ namespace OpenSage.Gui.Apt.ActionScript.Library
                     var transform = ctx.Item.Transform;
                     ctx.Item.Transform =
                         transform.WithColorTransform(transform.ColorTransform.WithRGB(r, g, b));
-                }
-            };
-
-            // list of builtin functions
-            BuiltinFunctions = new Dictionary<string, Action<ActionContext, ObjectContext, Value[]>>
-            {
-                ["gotoAndPlay"] = (actx, ctx, args) => GotoAndPlay(actx, ctx, args),
-                ["gotoAndStop"] = (actx, ctx, args) => GotoAndStop(ctx, args),
-                ["stop"] = (actx, ctx, args) => Stop(ctx),
-                ["clearInterval"] = ClearInterval,
-                ["setInterval"] = SetInterval,
-                ["loadMovie"] = LoadMovie,
-                // Global constructors / functions
-                ["Boolean"] = BoolFunc,
-                ["attachMovie"] = AttachMovie,
+                },
+                */
             };
         }
 
@@ -112,7 +125,7 @@ namespace OpenSage.Gui.Apt.ActionScript.Library
         {
             return BuiltinClasses[name](args);
         }
-
+        /*
         private static Value GetX(ObjectContext ctx)
         {
             return Value.FromFloat(ctx.Item.Transform.GeometryTranslation.X);
@@ -122,83 +135,16 @@ namespace OpenSage.Gui.Apt.ActionScript.Library
         {
             return Value.FromFloat(ctx.Item.Transform.GeometryTranslation.Y);
         }
+        */
 
-        private static Value GetParent(ObjectContext ctx)
+
+
+
+        private static void GetTime(ActionContext context)
         {
-            var item = ctx.Item;
-
-            // Parent of a render item is the parent of the containing sprite
-            // TODO: By doing some search on the web,
-            // it seems like in Flash / ActionScript 3, when trying to access
-            // the `parent` of root object, null or undefined will be returned.
-            var parent = item is RenderItem ? item.Parent?.Parent?.ScriptObject : item.Parent?.ScriptObject;
-            return Value.FromObject(parent);
-        }
-
-        private static void GotoAndPlay(ActionContext actx, ObjectContext ctx, Value[] args)
-        {
-            if (ctx.Item is SpriteItem si)
-            {
-                var dest = args.First().ResolveRegister(actx);
-
-                if (dest.Type == ValueType.String)
-                {
-                    si.Goto(dest.ToString());
-                }
-                else if (dest.Type == ValueType.Integer)
-                {
-                    si.GotoFrame(dest.ToInteger() - 1);
-                }
-                else
-                {
-                    throw new InvalidOperationException("Can only jump to labels or frame numbers");
-                }
-
-                si.Play();
-            }
-            else
-            {
-                throw new InvalidOperationException();
-            }
-        }
-
-        private static void GotoAndStop(ObjectContext ctx, Value[] args)
-        {
-            if (ctx.Item is SpriteItem si)
-            {
-                var dest = args.First();
-
-                if (dest.Type == ValueType.String)
-                {
-                    si.Goto(dest.ToString());
-                }
-                else if (dest.Type == ValueType.Integer)
-                {
-                    si.GotoFrame(dest.ToInteger() - 1);
-                }
-                else
-                {
-                    throw new InvalidOperationException("Can only jump to labels or frame numbers");
-                }
-
-                si.Stop(true);
-            }
-            else
-            {
-                throw new InvalidOperationException();
-            }
-        }
-
-        private static void Stop(ObjectContext ctx)
-        {
-            if (ctx.Item is SpriteItem si)
-            {
-                si.Stop();
-            }
-            else
-            {
-                throw new InvalidOperationException();
-            }
+            var result_ = DateTime.Now - Builtin.InitTimeStamp;
+            var result = Value.FromFloat(result_.TotalMilliseconds);
+            context.Push(result);
         }
 
         private static void LoadMovie(ActionContext context, ObjectContext ctx, Value[] args)
@@ -240,5 +186,6 @@ namespace OpenSage.Gui.Apt.ActionScript.Library
             var result = Value.FromBoolean(args[0].ToBoolean());
             context.Push(result);
         }
+
     }
 }

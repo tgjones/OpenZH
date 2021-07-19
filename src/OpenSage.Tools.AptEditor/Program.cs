@@ -81,10 +81,15 @@ namespace OpenSage.Tools.AptEditor
                         ImGui.TextWrapped("Start OpenSage Apt Editor by providing a root path.");
                         ImGui.TextWrapped("It's recommended that you set it to " +
                             "the RA3SDK_UI_ScreensPack folder so you could load apt files more easily.");
+
+                        // TODO More fancy implementations?
+                        var defaultInputPath = "G:\\Games\\RA#s\\aptuis\\aptui";
+                        
                         rootPathInput.InputText("##rootPath", out var inputRootPath);
                         if (ImGui.Button("Load"))
                         {
                             rootPath = inputRootPath;
+                            if (rootPath.Length < 1) rootPath = defaultInputPath;
                             window.Close();
                         }
                     }

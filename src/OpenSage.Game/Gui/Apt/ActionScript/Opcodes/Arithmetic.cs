@@ -11,7 +11,10 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 
         public override void Execute(ActionContext context)
         {
-            throw new NotImplementedException();
+            var a = context.Pop();
+            var b = context.Pop();
+
+            context.Push(Value.FromFloat(b.ToFloat() + a.ToFloat()));
         }
     }
 
@@ -33,6 +36,7 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 
     /// <summary>
     /// Pop two values from stack and add them. Can concatenate strings. Result on stack
+    /// The additive operator follows https://262.ecma-international.org/5.1/#sec-11.6.1
     /// </summary>
     public sealed class Add2 : InstructionBase
     {
@@ -46,7 +50,7 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 
             if (a.IsNumericType() && b.IsNumericType())
             {
-                context.Push(Value.FromInteger(b.ToInteger() + a.ToInteger()));
+                context.Push(Value.FromFloat(b.ToFloat() + a.ToFloat()));
             }
             else
             {
@@ -64,7 +68,10 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 
         public override void Execute(ActionContext context)
         {
-            throw new NotImplementedException();
+            var a = context.Pop();
+            var b = context.Pop();
+
+            context.Push(Value.FromFloat(b.ToFloat() * a.ToFloat()));
         }
     }
 
@@ -77,7 +84,17 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 
         public override void Execute(ActionContext context)
         {
-            throw new NotImplementedException();
+            var a = context.Pop();
+            var b = context.Pop();
+
+            var af = a.ToFloat();
+            var bf = b.ToFloat();
+
+            var val_to_push = Value.FromFloat(float.NaN);
+
+            if (!(af.Equals(Value.FromFloat(0)))) { val_to_push = Value.FromFloat(bf / af); }
+
+            context.Push(val_to_push);
         }
     }
 
@@ -90,7 +107,17 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 
         public override void Execute(ActionContext context)
         {
-            throw new NotImplementedException();
+            var a = context.Pop();
+            var b = context.Pop();
+
+            var af = a.ToFloat();
+            var bf = b.ToFloat();
+
+            var val_to_push = Value.FromFloat(float.NaN);
+
+            if (!(bf.Equals(Value.FromFloat(0)))) { val_to_push = Value.FromFloat(af % bf); }
+
+            context.Push(val_to_push);
         }
     }
 
@@ -117,17 +144,45 @@ namespace OpenSage.Gui.Apt.ActionScript.Opcodes
 
         public override void Execute(ActionContext context)
         {
-            throw new NotImplementedException();
+            var num = context.Pop().ToInteger();
+            context.Push(Value.FromInteger(--num));
         }
     }
 
+    public sealed class ShiftLeft : InstructionBase
+    {
+        public override InstructionType Type => InstructionType.ShiftLeft;
+
+        public override void Execute(ActionContext context)
+        {
+            var count = context.Pop().ToInteger() & 0b11111;
+            var val = context.Pop().ToInteger();
+            context.Push(Value.FromInteger(val << count));
+        }
+    }
+
+    public sealed class ShiftRight : InstructionBase
+    {
+        public override InstructionType Type => InstructionType.ShiftRight;
+
+        public override void Execute(ActionContext context)
+        {
+            var count = context.Pop().ToInteger() & 0b11111;
+            var val = context.Pop().ToInteger();
+            context.Push(Value.FromInteger(val >> count));
+        }
+    }
+
+    // shift right as uint
     public sealed class ShiftRight2 : InstructionBase
     {
         public override InstructionType Type => InstructionType.ShiftRight2;
 
         public override void Execute(ActionContext context)
         {
-            throw new NotImplementedException();
+            var count = context.Pop().ToInteger() & 0b11111;
+            var val = (uint) context.Pop().ToInteger();
+            context.Push(Value.FromInteger((int)(val >> count)));
         }
     }
 }

@@ -13,7 +13,7 @@ namespace OpenSage.Tools.AptEditor.UI.Widgets
     {
         public const string Name = "Frame Properties";
         private FrameItemUtilities? _utilities;
-        private InstructionEditor? _currentFrameAction;
+        // private VMConsole? _currentFrameAction;
         private int? _newPlaceObjectDepth;
         private int? _newPlaceCharacter;
         private ErrorType? _whyCannotPlaceCharacter;
@@ -78,7 +78,7 @@ namespace OpenSage.Tools.AptEditor.UI.Widgets
                     using var _ = new ImGuiIDHelper("Frame actions", ref id);
                     if (ImGui.Button("Frame Action"))
                     {
-                        _currentFrameAction = new InstructionEditor(item.Instructions);
+                        manager.CurrentActions = item.Instructions;
                     }
                 }
                 ImGui.Separator();
@@ -94,7 +94,7 @@ namespace OpenSage.Tools.AptEditor.UI.Widgets
                     ImGui.SameLine(35, 5);
                     if (ImGui.Button("Sprite InitAction"))
                     {
-                        _currentFrameAction = new InstructionEditor(item.Instructions);
+                        manager.CurrentActions = item.Instructions;
                     }
                 }
                 ImGui.Separator();
@@ -146,7 +146,7 @@ namespace OpenSage.Tools.AptEditor.UI.Widgets
             ImGui.End();
 
             // Draw Frame's Action / InitAction
-            _currentFrameAction?.Draw(manager);
+            // _currentFrameAction?.Draw(manager);
         }
 
         private void DrawCreatePlaceObjectForm()

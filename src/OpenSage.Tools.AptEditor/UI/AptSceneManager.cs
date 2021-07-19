@@ -8,6 +8,7 @@ using OpenSage.Data.Apt.Characters;
 using OpenSage.Gui.Apt;
 using OpenSage.Mathematics;
 using OpenSage.Tools.AptEditor.Apt;
+using OpenSage.Tools.AptEditor.Apt.Editor;
 
 namespace OpenSage.Tools.AptEditor.UI
 {
@@ -24,6 +25,7 @@ namespace OpenSage.Tools.AptEditor.UI
     {
         public int MillisecondsPerFrame => (int) (AptManager?.AptFile.Movie.MillisecondsPerFrame ?? 30);
         public Character? CurrentCharacter { get; private set; }
+        public LogicalInstructions? CurrentActions { get; set; }
         public bool IsCurrentCharacterImported => CurrentCharacter?.Container != AptManager?.AptFile;
         public string? CurrentAptPath { get; private set; }
         public int NumberOfFrames { get; private set; }
@@ -31,19 +33,19 @@ namespace OpenSage.Tools.AptEditor.UI
         public int CurrentFrame { get; private set; }
         public Vector2 CurrentOffset
         {
-            get => _currentWindow?.WindowTransform.GeometryTranslation ?? Vector2.Zero;
+            get => CurrentWindow?.WindowTransform.GeometryTranslation ?? Vector2.Zero;
             set => SetTransform((ref ItemTransform t) => t.GeometryTranslation = value);
         }
         public float CurrentScale
         {
-            get => _currentWindow?.WindowTransform.GeometryRotation.M11 ?? 1;
+            get => CurrentWindow?.WindowTransform.GeometryRotation.M11 ?? 1;
             set => SetTransform((ref ItemTransform t) => t.GeometryRotation = Matrix3x2.CreateScale(value));
         }
         public ColorRgbaF DisplayBackgroundColor { get; private set; }
         public Game Game { get; }
         public AptEditManager? AptManager { get; private set; }
-        private AptWindow? _currentWindow;
-        private WrappedDisplayItem? _currentDisplay;
+        public AptWindow? CurrentWindow { get; private set; }
+        public WrappedDisplayItem CurrentDisplay { get; private set; }
 
         public AptSceneManager(Game game)
         {
@@ -59,8 +61,9 @@ namespace OpenSage.Tools.AptEditor.UI
             CurrentOffset = Vector2.Zero;
             CurrentScale = 1;
             AptManager = null;
-            _currentWindow = null;
-            _currentDisplay = null;
+            CurrentWindow = null;
+            CurrentDisplay = null;
+            CurrentActions = null;
         }
 
         public void LoadApt(string path)
@@ -107,8 +110,9 @@ namespace OpenSage.Tools.AptEditor.UI
 
         public void ResetAptWindow()
         {
-            _currentWindow = null;
-            _currentDisplay = null;
+            CurrentWindow = null;
+            CurrentDisplay = null;
+            // CurrentActions = null;
 
             var windows = Game.Scene2D.AptWindowManager;
             while (windows.OpenWindowCount > 0)
@@ -121,8 +125,9 @@ namespace OpenSage.Tools.AptEditor.UI
             windows.PushWindow(AptEditorBackgroundSource.CreateBackgroundAptWindow(Game, color));
             if (AptManager != null)
             {
-                _currentWindow = new AptWindow(Game, Game.ContentManager, AptManager.AptFile);
-                var root = _currentWindow.Root;
+                CurrentWindow = new AptWindow(Game, Game.ContentManager, AptManager.AptFile);
+                CurrentWindow.Context.LoadContext();
+                var root = CurrentWindow.Root;
                 // hack: an AptWindow will always be updated by the game when it's loaded
                 // because AptWindow.Root.IsNewFrame() will return true if the private member
                 // _lastUpdate.TotalTime is zero.
@@ -130,22 +135,23 @@ namespace OpenSage.Tools.AptEditor.UI
                 // it won't be updated by the game anymore
                 var field = root.GetType().GetField("_lastUpdate", BindingFlags.Instance | BindingFlags.NonPublic);
                 field!.SetValue(root, new TimeInterval(1, 0));
-                _currentWindow.Root.Stop();
+                CurrentWindow.Root.Stop();
 
                 // set display list
-                var list = _currentWindow.Root.Content;
+                var list = CurrentWindow.Root.Content;
                 while (list.Items.Any())
                 {
                     list.RemoveItem(list.Items.Keys.First());
                 }
                 if (CurrentCharacter != null)
                 {
-                    _currentDisplay = new WrappedDisplayItem(CurrentCharacter, _currentWindow.Context, _currentWindow.Root);
-                    list.AddItem(default, _currentDisplay);
+                    CurrentDisplay = new WrappedDisplayItem(CurrentCharacter, CurrentWindow.Context, CurrentWindow.Root);
+                    list.AddItem(default, CurrentDisplay);
                 }
 
-                windows.PushWindow(_currentWindow);
-                _currentDisplay?.PlayToFrameNoActions(0);
+                windows.PushWindow(CurrentWindow);
+                if (CurrentDisplay is not null)
+                    CurrentDisplay.PlayToFrameNoActions(0);
             }
         }
 
@@ -169,35 +175,35 @@ namespace OpenSage.Tools.AptEditor.UI
 
         public void PlayToFrame(int frame)
         {
-            if (_currentDisplay is null)
+            if (CurrentDisplay is null)
             {
                 throw new InvalidOperationException();
             }
 
             CurrentFrame = frame;
-            _currentDisplay.PlayToFrameNoActions(CurrentFrame);
+            CurrentDisplay.PlayToFrameNoActions(CurrentFrame);
         }
 
         public void NextFrame()
         {
-            if (_currentDisplay is null)
+            if (CurrentDisplay is null)
             {
                 throw new InvalidOperationException();
             }
 
             ++CurrentFrame;
-            _currentDisplay.UpdateNextFrameNoActions();
+            CurrentDisplay.UpdateNextFrameNoActions();
         }
 
         private delegate void TransformAction(ref ItemTransform t);
         private void SetTransform(TransformAction action)
         {
-            if (_currentWindow == null)
+            if (CurrentWindow == null)
             {
                 return;
             }
 
-            action(ref _currentWindow.WindowTransform);
+            action(ref CurrentWindow.WindowTransform);
         }
     }
 }

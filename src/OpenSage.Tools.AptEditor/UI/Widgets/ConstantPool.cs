@@ -1,28 +1,29 @@
 ﻿using ImGuiNET;
 using OpenSage.Tools.AptEditor.Apt.Editor;
 using OpenSage.Tools.AptEditor.Util;
+using OpenSage.Data.Apt;
 
 namespace OpenSage.Tools.AptEditor.UI.Widgets
 {
-    internal class InstructionEditor : IWidget
+    internal class ConstantPool : IWidget
     {
-        LogicalInstructions _instructions;
+        ConstantData _data = null;
         InputComboBox _editBox = new AutoSuggestionBox
         {
             Suggestions = InstructionUtility.InstructionNames
         };
         int _editingIndex = -1;
 
-        public InstructionEditor(LogicalInstructions instructions)
-        {
-            _instructions = instructions;
-        }
-
         public void Draw(AptSceneManager manager)
         {
-            if (ImGui.Begin("Instruction Editor"))
+            _data = manager.AptManager?.AptFile.Constants;
+
+            if (_data == null) return;
+
+            if (ImGui.Begin("Constant Pool"))
             {
-                for (var i = 0; i < _instructions.Items.Count; ++i)
+
+                for (var i = 0; i < _data.Entries.Count; ++i)
                 {
                     if (i == _editingIndex)
                     {
@@ -35,7 +36,8 @@ namespace OpenSage.Tools.AptEditor.UI.Widgets
                     }
                     else
                     {
-                        ImGui.Button(_instructions.Items[i].InstructionName());
+                        var s = string.Format("#{0}: {1} {2}", i, _data.Entries[i].Type.ToString(), _data.Entries[i].Value.ToString());
+                        ImGui.Button(s);
                     }
                 }
             }
